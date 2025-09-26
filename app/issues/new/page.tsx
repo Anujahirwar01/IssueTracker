@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import "easymde/dist/easymde.min.css"
 import axios from 'axios';
+import {zodResolver} from '@hookform/resolvers/zod';
+import Spinner from '@/app/components/Spinner';
 
 const SimpleMDE = dynamic(
   () => import("react-simplemde-editor"),
@@ -76,6 +78,7 @@ const NewIssuePage = () => {
                     onChange={(value: string) => setDescription(value)}
                 />
                 <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Spinner />}
                     {isSubmitting ? 'Creating...' : 'Submit New Issue'}
                 </Button>
             </form>
