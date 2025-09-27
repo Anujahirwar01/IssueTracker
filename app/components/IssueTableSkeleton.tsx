@@ -3,7 +3,11 @@ import { Table } from '@radix-ui/themes';
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 
-const IssueTableSkeleton = () => {
+interface IssueTableSkeletonProps {
+    count?: number; // Number of skeleton rows to show
+}
+
+const IssueTableSkeleton = ({ count = 3 }: IssueTableSkeletonProps) => {
     return (
         <SkeletonTheme baseColor="#f3f4f6" highlightColor="#e5e7eb">
             <div className="max-w-4xl">
@@ -16,14 +20,14 @@ const IssueTableSkeleton = () => {
                     </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                    {Array.from({ length: 5 }, (_, index) => {
+                    {Array.from({ length: count }, (_, index) => {
                         // Smaller, more realistic widths for compact table
-                        const titleWidths = [180, 200, 160, 220, 170];
+                        const titleWidths = [180, 200, 160, 220, 170, 190, 210, 175, 195, 185];
                         return (
                             <Table.Row key={index}>
                                 {/* Issue Title Column - Smaller widths */}
                                 <Table.Cell>
-                                    <Skeleton width={titleWidths[index]} height={14} />
+                                    <Skeleton width={titleWidths[index % titleWidths.length]} height={14} />
                                 </Table.Cell>
                                 
                                 {/* Status Badge Column - Compact badge */}

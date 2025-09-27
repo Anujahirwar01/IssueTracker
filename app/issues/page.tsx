@@ -20,6 +20,8 @@ const IssuesPage = () => {
     const router = useRouter();
     const [issues, setIssues] = useState<Issue[]>([]);
     const [loading, setLoading] = useState(true);
+    const [issueCount, setIssueCount] = useState<number>(0);
+    const [countLoaded, setCountLoaded] = useState<boolean>(false);
 
     useEffect(() => {
         fetchIssues();
@@ -27,7 +29,15 @@ const IssuesPage = () => {
 
     const fetchIssues = async () => {
         try {
-            // Use withMinimumDelay to ensure skeleton shows for at least 800ms
+            // First, get the count quickly to show proper skeleton size
+            const countResponse = await fetch('/api/issues');
+            if (countResponse.ok) {
+                const countData = await countResponse.json();
+                setIssueCount(countData.length || 0);
+                setCountLoaded(true); // Now we can show the skeleton with correct count
+            }
+
+            // Then use withMinimumDelay for the actual data with skeleton display
             const data = await withMinimumDelay(async () => {
                 const response = await fetch('/api/issues');
                 if (response.ok) {
@@ -47,13 +57,49 @@ const IssuesPage = () => {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 p-10">
             <div>
                 <Button onClick={handleNewIssue}>New Issue</Button>
             </div>
             
             {loading ? (
-                <IssueTableSkeleton />
+                !countLoaded ? (
+                    // Show table structure with minimal skeleton while getting count
+                    <div className="max-w-4xl">
+                        <Table.Root variant='surface' size="2">
+                            <Table.Header>
+                                <Table.Row>
+                                    <Table.ColumnHeaderCell>Issue</Table.ColumnHeaderCell>
+                                    <Table.ColumnHeaderCell className='hidden md:table-cell'>Status</Table.ColumnHeaderCell>
+                                    <Table.ColumnHeaderCell className='hidden md:table-cell'>Created</Table.ColumnHeaderCell>
+                                </Table.Row>
+                            </Table.Header>
+                            <Table.Body>
+                                <Table.Row>
+                                    <Table.Cell colSpan={3}>
+                                        <div className="flex items-center justify-center py-4">
+                                            <div className="text-gray-500 text-sm">Loading issues...</div>
+                                        </div>
+                                    </Table.Cell>
+                                </Table.Row>
+                            </Table.Body>
+                        </Table.Root>
+                    </div>
+                ) : issueCount === 0 ? (
+                    <div className="max-w-4xl">
+                        <Table.Root variant='surface' size="2">
+                            <Table.Header>
+                                <Table.Row>
+                                    <Table.ColumnHeaderCell>Issue</Table.ColumnHeaderCell>
+                                    <Table.ColumnHeaderCell className='hidden md:table-cell'>Status</Table.ColumnHeaderCell>
+                                    <Table.ColumnHeaderCell className='hidden md:table-cell'>Created</Table.ColumnHeaderCell>
+                                </Table.Row>
+                            </Table.Header>
+                        </Table.Root>
+                    </div>
+                ) : (
+                    <IssueTableSkeleton count={issueCount} />
+                )
             ) : (
                 <div className="max-w-4xl">
                     <Table.Root variant='surface' size="2">
