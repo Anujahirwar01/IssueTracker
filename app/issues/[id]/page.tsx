@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Card, Heading, Text, Button } from '@radix-ui/themes';
 import ReactMarkdown from 'react-markdown';
 import IssueStatusBadge from '../../components/IssueStatusBadge';
@@ -13,6 +14,11 @@ interface Issue {
     status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
     createdAt: Date;
     updatedAt: Date;
+    author?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+    };
 }
 
 interface Props {
@@ -21,6 +27,7 @@ interface Props {
 
 const IssueDetailPage = ({ params }: Props) => {
     const router = useRouter();
+    const { data: session } = useSession();
     const [issue, setIssue] = useState<Issue | null>(null);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
@@ -107,22 +114,24 @@ const IssueDetailPage = ({ params }: Props) => {
                 <Button variant="soft" onClick={() => router.push('/issues')}>
                     ← Back to Issues
                 </Button>
-                <div className="flex gap-3">
-                    <Button onClick={() => router.push(`/issues/${issue.id}/edit`)}>
-                        Edit Issue
-                    </Button>
-                    <Button 
-                        color="red" 
-                        variant="soft"
-                        onClick={() => setShowDeleteConfirm(true)}
-                    >
-                        Delete Issue
-                    </Button>
-                </div>
+                {session && session.user?.email === issue.author?.email && (
+                    <div className="flex gap-3">
+                        <Button onClick={() => router.push(`/issues/${issue.id}/edit`)}>
+                            Edit Issue
+                        </Button>
+                        <Button 
+                            color="red" 
+                            variant="soft"
+                            onClick={() => setShowDeleteConfirm(true)}
+                        >
+                            Delete Issue
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Delete Confirmation Dialog */}
-            {showDeleteConfirm && (
+            {showDeleteConfirm && session && (
                 <Card style={{ border: '2px solid #ef4444' }}>
                     <div className="p-6 text-center space-y-4">
                         <Heading size="4" color="red">Delete Issue</Heading>
@@ -162,6 +171,11 @@ const IssueDetailPage = ({ params }: Props) => {
                         <Text size="2" color="gray">
                             Updated: {new Date(issue.updatedAt).toLocaleDateString()}
                         </Text>
+                        {issue.author && (
+                            <Text size="2" color="gray">
+                                Author: {issue.author.name || issue.author.email}
+                            </Text>
+                        )}
                     </div>
 
                     <div className="border-t pt-4">

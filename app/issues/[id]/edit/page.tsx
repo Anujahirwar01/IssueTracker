@@ -19,6 +19,11 @@ interface Issue {
     status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
     createdAt: Date;
     updatedAt: Date;
+    author?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+    };
 }
 
 interface Props {

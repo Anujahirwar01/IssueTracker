@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/prisma/client";
 import { z } from "zod";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -16,7 +18,16 @@ export async function GET(request: NextRequest, { params }: Props) {
         }
 
         const issue = await prisma.issue.findUnique({
-            where: { id: issueId }
+            where: { id: issueId },
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
         });
 
         if (!issue) {
@@ -39,6 +50,12 @@ const updateIssueSchema = z.object({
 
 export async function PUT(request: NextRequest, { params }: Props) {
     try {
+        // Check authentication
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
         const issueId = parseInt(id);
         
@@ -46,13 +63,21 @@ export async function PUT(request: NextRequest, { params }: Props) {
             return NextResponse.json({ error: 'Invalid issue ID' }, { status: 400 });
         }
 
-        // Check if issue exists
+        // Check if issue exists and get author info
         const existingIssue = await prisma.issue.findUnique({
-            where: { id: issueId }
+            where: { id: issueId },
+            include: {
+                author: true
+            }
         });
 
         if (!existingIssue) {
             return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
+        }
+
+        // Check ownership - only the author can edit
+        if (existingIssue.author?.email !== session.user.email) {
+            return NextResponse.json({ error: 'Forbidden - You can only edit your own issues' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -88,6 +113,12 @@ export async function PUT(request: NextRequest, { params }: Props) {
 
 export async function DELETE(request: NextRequest, { params }: Props) {
     try {
+        // Check authentication
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
         const issueId = parseInt(id);
         
@@ -95,13 +126,21 @@ export async function DELETE(request: NextRequest, { params }: Props) {
             return NextResponse.json({ error: 'Invalid issue ID' }, { status: 400 });
         }
 
-        // Check if issue exists
+        // Check if issue exists and get author info
         const existingIssue = await prisma.issue.findUnique({
-            where: { id: issueId }
+            where: { id: issueId },
+            include: {
+                author: true
+            }
         });
 
         if (!existingIssue) {
             return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
+        }
+
+        // Check ownership - only the author can delete
+        if (existingIssue.author?.email !== session.user.email) {
+            return NextResponse.json({ error: 'Forbidden - You can only delete your own issues' }, { status: 403 });
         }
 
         // Delete the issue

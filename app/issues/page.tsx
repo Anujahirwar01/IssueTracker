@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import {Button, Table} from '@radix-ui/themes';
 import { useRouter } from 'next/navigation';
+import { useSession, signIn } from 'next-auth/react';
 import Link from 'next/link';
 import IssueStatusBadge from '../components/IssueStatusBadge';
 import IssueTableSkeleton from '../components/IssueTableSkeleton';
@@ -14,10 +15,16 @@ interface Issue {
     status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
     createdAt: Date;
     updatedAt: Date;
+    author?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+    };
 }
 
 const IssuesPage = () => {
     const router = useRouter();
+    const { data: session } = useSession();
     const [issues, setIssues] = useState<Issue[]>([]);
     const [loading, setLoading] = useState(true);
     const [issueCount, setIssueCount] = useState<number>(0);
@@ -56,10 +63,18 @@ const IssuesPage = () => {
         router.push('/issues/new');
     };
 
+    const handleNewIssueClick = () => {
+        if (session) {
+            handleNewIssue();
+        } else {
+            signIn();
+        }
+    };
+
     return (
         <div className="space-y-4 p-10">
             <div>
-                <Button onClick={handleNewIssue}>New Issue</Button>
+                <Button onClick={handleNewIssueClick}>New Issue</Button>
             </div>
             
             {loading ? (
