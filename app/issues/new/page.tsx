@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import "easymde/dist/easymde.min.css"
 import axios from 'axios';
-import {zodResolver} from '@hookform/resolvers/zod';
 import Spinner from '@/app/components/Spinner';
 
 const SimpleMDE = dynamic(

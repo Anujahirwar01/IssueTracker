@@ -6,6 +6,7 @@ import { Card, Heading, Text, Button } from '@radix-ui/themes';
 import ReactMarkdown from 'react-markdown';
 import IssueStatusBadge from '../../components/IssueStatusBadge';
 import IssueDetailSkeleton from '../../components/IssueDetailSkeleton';
+import AssigneeSelect from './AssigneeSelect';
 
 interface Issue {
     id: number;
@@ -15,6 +16,11 @@ interface Issue {
     createdAt: Date;
     updatedAt: Date;
     author?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+    };
+    assignee?: {
         id: string;
         name: string | null;
         email: string | null;
@@ -115,7 +121,13 @@ const IssueDetailPage = ({ params }: Props) => {
                     ← Back to Issues
                 </Button>
                 {session && session.user?.email === issue.author?.email && (
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 items-center">
+                        <AssigneeSelect 
+                            issueId={issue.id} 
+                            currentAssigneeId={issue.assignee?.id}
+                            isOwner={true}
+                            onAssigneeChange={fetchIssue}
+                        />
                         <Button onClick={() => router.push(`/issues/${issue.id}/edit`)}>
                             Edit Issue
                         </Button>
@@ -176,6 +188,16 @@ const IssueDetailPage = ({ params }: Props) => {
                                 Author: {issue.author.name || issue.author.email}
                             </Text>
                         )}
+                        <div className="flex items-center gap-1">
+                            <Text size="2" color="gray">Assignee:</Text>
+                            <Text size="2" color="gray">
+                                <AssigneeSelect 
+                                    issueId={issue.id} 
+                                    currentAssigneeId={issue.assignee?.id}
+                                    isOwner={false}
+                                />
+                            </Text>
+                        </div>
                     </div>
 
                     <div className="border-t pt-4">

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/prisma/client";
 import { z } from "zod";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -21,6 +21,13 @@ export async function GET(request: NextRequest, { params }: Props) {
             where: { id: issueId },
             include: {
                 author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                },
+                assignee: {
                     select: {
                         id: true,
                         name: true,
@@ -46,6 +53,11 @@ const updateIssueSchema = z.object({
     title: z.string().min(1, "Title is required").max(255, "Title must be less than 255 characters"),
     description: z.string().min(1, "Description is required"),
     status: z.enum(['OPEN', 'IN_PROGRESS', 'CLOSED']).optional(),
+});
+
+// Validation schema for assigning users
+const assignIssueSchema = z.object({
+    assigneeId: z.string().nullable(),
 });
 
 export async function PUT(request: NextRequest, { params }: Props) {
@@ -152,5 +164,85 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     } catch (error) {
         console.error('Failed to delete issue:', error);
         return NextResponse.json({ error: 'Failed to delete issue' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: NextRequest, { params }: Props) {
+    try {
+        // Check authentication
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { id } = await params;
+        const issueId = parseInt(id);
+        
+        if (isNaN(issueId)) {
+            return NextResponse.json({ error: 'Invalid issue ID' }, { status: 400 });
+        }
+
+        // Check if issue exists
+        const existingIssue = await prisma.issue.findUnique({
+            where: { id: issueId },
+        });
+
+        if (!existingIssue) {
+            return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
+        }
+
+        const body = await request.json();
+        
+        // Validate the request body
+        const validation = assignIssueSchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json({ 
+                error: 'Validation failed', 
+                details: validation.error.issues 
+            }, { status: 400 });
+        }
+
+        const { assigneeId } = validation.data;
+
+        // If assigneeId is provided, verify the user exists
+        if (assigneeId) {
+            const assigneeExists = await prisma.user.findUnique({
+                where: { id: assigneeId }
+            });
+            
+            if (!assigneeExists) {
+                return NextResponse.json({ error: 'Assignee not found' }, { status: 400 });
+            }
+        }
+
+        // Update the issue assignee
+        const updatedIssue = await prisma.issue.update({
+            where: { id: issueId },
+            data: {
+                assigneeId: assigneeId,
+                updatedAt: new Date(),
+            },
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                },
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
+        });
+
+        return NextResponse.json(updatedIssue);
+    } catch (error) {
+        console.error('Failed to update assignee:', error);
+        return NextResponse.json({ error: 'Failed to update assignee' }, { status: 500 });
     }
 }

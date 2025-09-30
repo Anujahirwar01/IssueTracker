@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+
+# Generated files
+app/generated/
+**/generated/
+**/*.d.ts
+
+# Environment files
+.env
+.env.local
+.env.production.local
+.env.development.local
+
+# Build outputs
+dist/
+coverage/
+
+# Prisma generated files
+prisma/generated/
+
+# Vercel
+.vercel/

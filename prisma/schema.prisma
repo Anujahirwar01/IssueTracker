@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -22,7 +22,9 @@ model Issue {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   authorId    String?
-  author      User?    @relation(fields: [authorId], references: [id])
+  author      User?    @relation("IssueAuthor", fields: [authorId], references: [id])
+  assigneeId  String?
+  assignee    User?    @relation("IssueAssignee", fields: [assigneeId], references: [id])
 }
 
 enum Status {
@@ -69,7 +71,8 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
-  issues        Issue[]
+  authoredIssues Issue[]  @relation("IssueAuthor")
+  assignedIssues Issue[]  @relation("IssueAssignee")
  
   @@map("users")
 }

@@ -2,11 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/prisma/client";
 import { createIssueSchema } from "../../ValidationSchema";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '10');
+        const status = searchParams.get('status');
+        
+        // Calculate offset for pagination
+        const skip = (page - 1) * limit;
+        
+        // Build where condition for status filter
+        const whereCondition: { status?: 'OPEN' | 'IN_PROGRESS' | 'CLOSED' } = {};
+        if (status && status !== 'ALL' && ['OPEN', 'IN_PROGRESS', 'CLOSED'].includes(status)) {
+            whereCondition.status = status as 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
+        }
+        
+        // Get total count for pagination metadata
+        const totalCount = await prisma.issue.count({
+            where: whereCondition
+        });
+        
+        // Get paginated issues
         const issues = await prisma.issue.findMany({
+            where: whereCondition,
             include: {
                 author: {
                     select: {
@@ -14,11 +35,36 @@ export async function GET() {
                         name: true,
                         email: true
                     }
+                },
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit
         });
-        return NextResponse.json(issues);
+        
+        // Calculate pagination metadata
+        const totalPages = Math.ceil(totalCount / limit);
+        const hasNextPage = page < totalPages;
+        const hasPreviousPage = page > 1;
+        
+        return NextResponse.json({
+            issues,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages,
+                hasNextPage,
+                hasPreviousPage
+            }
+        });
     } catch (error) {
         console.error('Failed to fetch issues:', error);
         return NextResponse.json({ error: 'Failed to fetch issues' }, { status: 500 });
